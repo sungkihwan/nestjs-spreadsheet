@@ -3,9 +3,12 @@ import { AuthClient } from 'google-auth-library/build/src/auth/authclient';
 import { GoogleAuth } from 'google-auth-library/build/src/auth/googleauth';
 import * as AsyncLock from 'async-lock';
 
-import { retryHandler } from '@libs/utils/handler/handlers';
+import { retryHandler } from '@libs/spreadsheet/handlers';
 
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive',
+];
 
 export interface IFIle {
   name: string;
@@ -15,18 +18,18 @@ export interface IFIle {
 }
 
 export interface ISpreadSheet {
-  spreadsheetId: string,
-  title: string,
-  spreadsheetUrl: string,
-  sheets: ISheet[],
+  spreadsheetId: string;
+  title: string;
+  spreadsheetUrl: string;
+  sheets: ISheet[];
 }
 
 export interface ISheet {
-  sheetId: number,
-  title: string,
-  index: number,
-  sheetType: string,
-  gridProperties: any,
+  sheetId: number;
+  title: string;
+  index: number;
+  sheetType: string;
+  gridProperties: any;
 }
 
 export interface IData {
@@ -34,7 +37,6 @@ export interface IData {
   range?: string | null;
   values?: any[][] | null;
 }
-
 
 export class GoogleApiSpreadsheetEditorCustom {
   private isInitialized = false;
@@ -70,19 +72,22 @@ export class GoogleApiSpreadsheetEditorCustom {
 
     return new Promise((resolve, reject) => {
       const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
-      sheets.spreadsheets.create({
-        requestBody: {
-          properties: {
-            title,
+      sheets.spreadsheets.create(
+        {
+          requestBody: {
+            properties: {
+              title,
+            },
           },
         },
-      }, (err, res) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.mapEntityToDomain(res.data));
-      });
+        (err, res) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(this.mapEntityToDomain(res.data));
+        },
+      );
     });
   }
 
@@ -93,25 +98,28 @@ export class GoogleApiSpreadsheetEditorCustom {
 
     return new Promise((resolve, reject) => {
       const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
-      sheets.spreadsheets.get({
-        spreadsheetId,
-      }, (err, res) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.mapEntityToDomain(res.data));
-      });
+      sheets.spreadsheets.get(
+        {
+          spreadsheetId,
+        },
+        (err, res) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(this.mapEntityToDomain(res.data));
+        },
+      );
     });
   }
 
   private mapEntityToDomain(entity: any) {
-    return ({
+    return {
       spreadsheetId: entity.spreadsheetId,
       title: entity.properties.title,
       spreadsheetUrl: entity.spreadsheetId,
-      sheets: entity.sheets.map(sheet => sheet.properties as ISheet),
-    });
+      sheets: entity.sheets.map((sheet) => sheet.properties as ISheet),
+    };
   }
 
   async copySheet(spreadsheetId: string, destId: string): Promise<string> {
@@ -119,7 +127,11 @@ export class GoogleApiSpreadsheetEditorCustom {
     const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
     for (let i = 0; i < getSpreadSheet.sheets.length; i++) {
       const sheet = getSpreadSheet.sheets[i];
-      const copiedSheet = await this.copyOneSheet({ spreadsheetId, sheetId: sheet.sheetId, destId });
+      const copiedSheet = await this.copyOneSheet({
+        spreadsheetId,
+        sheetId: sheet.sheetId,
+        destId,
+      });
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: destId,
         requestBody: {
@@ -140,7 +152,7 @@ export class GoogleApiSpreadsheetEditorCustom {
 
   private mapSheetToRequest(sheet: ISheet): any {
     const title = sheet.title.replace('의 사본', '');
-    return ({
+    return {
       updateSheetProperties: {
         properties: {
           ...sheet,
@@ -148,18 +160,22 @@ export class GoogleApiSpreadsheetEditorCustom {
         },
         fields: '*',
       },
-    });
-  };
+    };
+  }
 
   private mapSheetToDeleteRequest(sheet: ISheet): any {
-    return ({
+    return {
       deleteSheet: {
         sheetId: sheet.sheetId,
       },
-    });
-  };
+    };
+  }
 
-  private async copyOneSheet(props: { spreadsheetId: string, sheetId: number, destId: string }): Promise<ISheet> {
+  private async copyOneSheet(props: {
+    spreadsheetId: string;
+    sheetId: number;
+    destId: string;
+  }): Promise<ISheet> {
     if (!this.isInitialized) {
       await this.init();
     }
@@ -167,32 +183,43 @@ export class GoogleApiSpreadsheetEditorCustom {
 
     return new Promise((resolve, reject) => {
       const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
-      sheets.spreadsheets.sheets.copyTo({
-        spreadsheetId,
-        sheetId,
-        requestBody: {
-          destinationSpreadsheetId: destId,
+      sheets.spreadsheets.sheets.copyTo(
+        {
+          spreadsheetId,
+          sheetId,
+          requestBody: {
+            destinationSpreadsheetId: destId,
+          },
         },
-      }, (err, res) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve({
-          title: res.data.title,
-          sheetId: res.data.sheetId,
-          index: res.data.index,
-          gridProperties: res.data.gridProperties,
-          sheetType: res.data.sheetType,
-        });
-      });
+        (err, res) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve({
+            title: res.data.title,
+            sheetId: res.data.sheetId,
+            index: res.data.index,
+            gridProperties: res.data.gridProperties,
+            sheetType: res.data.sheetType,
+          });
+        },
+      );
     });
   }
 
-  async copyOneSheetToSpreadsheet(props: { spreadsheetId: string, sheetId: number, destId: string }): Promise<void> {
+  async copyOneSheetToSpreadsheet(props: {
+    spreadsheetId: string;
+    sheetId: number;
+    destId: string;
+  }): Promise<void> {
     const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
     const { sheetId, spreadsheetId, destId } = props;
-    const copiedSheet = await this.copyOneSheet({ spreadsheetId, sheetId, destId });
+    const copiedSheet = await this.copyOneSheet({
+      spreadsheetId,
+      sheetId,
+      destId,
+    });
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: destId,
       requestBody: {
@@ -216,7 +243,11 @@ export class GoogleApiSpreadsheetEditorCustom {
     return data.files;
   }
 
-  async readSheet(spreadsheetId: string, range: string, renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE'): Promise<any[]> {
+  async readSheet(
+    spreadsheetId: string,
+    range: string,
+    renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE',
+  ): Promise<any[]> {
     if (!this.isInitialized) {
       await this.init();
     }
@@ -230,7 +261,12 @@ export class GoogleApiSpreadsheetEditorCustom {
     return res.data.values;
   }
 
-  async updateSheet(spreadsheetId: string, range: string, values: any, valueInputOption = 'RAW'): Promise<any> {
+  async updateSheet(
+    spreadsheetId: string,
+    range: string,
+    values: any,
+    valueInputOption = 'RAW',
+  ): Promise<any> {
     if (!this.isInitialized) {
       await this.init();
     }
@@ -239,47 +275,53 @@ export class GoogleApiSpreadsheetEditorCustom {
       const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
       if (this.isLock) {
         this.lock.acquire('old-google-api', () => {
-          sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range,
-            valueInputOption,
-            requestBody: {
-              // range: '1. 법인설립 배정_list!C892:D892',
-              values,
+          sheets.spreadsheets.values.update(
+            {
+              spreadsheetId,
+              range,
+              valueInputOption,
+              requestBody: {
+                // range: '1. 법인설립 배정_list!C892:D892',
+                values,
+              },
             },
-          }, (err, res) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve(res.data);
-          });
+            (err, res) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              resolve(res.data);
+            },
+          );
         });
         return;
       }
-      sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range,
-        valueInputOption,
-        requestBody: {
-          // range: '1. 법인설립 배정_list!C892:D892',
-          values,
+      sheets.spreadsheets.values.update(
+        {
+          spreadsheetId,
+          range,
+          valueInputOption,
+          requestBody: {
+            // range: '1. 법인설립 배정_list!C892:D892',
+            values,
+          },
         },
-      }, (err, res) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(res.data);
-      });
+        (err, res) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(res.data);
+        },
+      );
     });
   }
 
   async addPermission(
-      fileId: string,
-      emailAddress: string,
-      role: 'owner' | 'reader' | 'writer',
-      type: 'user' | 'group' | 'domain' | 'anyone' = 'user'
+    fileId: string,
+    emailAddress: string,
+    role: 'owner' | 'reader' | 'writer',
+    type: 'user' | 'group' | 'domain' | 'anyone' = 'user',
   ): Promise<void> {
     if (!this.isInitialized) {
       await this.init();
@@ -299,9 +341,12 @@ export class GoogleApiSpreadsheetEditorCustom {
   }
 
   async updateSheetBatch(
-    spreadsheetId: string, data: IData[], valueInputOption = 'RAW',
-    includeValuesInResponse = null, responseDateTimeRenderOption = null,
-    responseValueRenderOption = null
+    spreadsheetId: string,
+    data: IData[],
+    valueInputOption = 'RAW',
+    includeValuesInResponse = null,
+    responseDateTimeRenderOption = null,
+    responseValueRenderOption = null,
   ): Promise<any> {
     if (!this.isInitialized) {
       await this.init();
@@ -310,13 +355,13 @@ export class GoogleApiSpreadsheetEditorCustom {
     // const params = {
     //   spreadsheetId,
     //   requesyBody: {
-        // data: [
-        // {
-        //   majorDimension: null, // string | null;
-        //   range: '[H-2]수집장!B466:AB568', // string | null;
-        //   values: [1][2] // any[][] | null;
-        // }
-        // ],
+    // data: [
+    // {
+    //   majorDimension: null, // string | null;
+    //   range: '[H-2]수집장!B466:AB568', // string | null;
+    //   values: [1][2] // any[][] | null;
+    // }
+    // ],
     //     includeValuesInResponse: true, // boolean | null;
     //     responseDateTimeRenderOption: null, //string | null;
     //     responseValueRenderOption: null, // string | null;
@@ -326,25 +371,28 @@ export class GoogleApiSpreadsheetEditorCustom {
 
     return new Promise((resolve, reject) => {
       const sheets = google.sheets({ version: 'v4', auth: this.oAuth2Client });
-      sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          data,
-          valueInputOption,
-          includeValuesInResponse,
-          responseDateTimeRenderOption,
-          responseValueRenderOption
+      sheets.spreadsheets.values.batchUpdate(
+        {
+          spreadsheetId,
+          requestBody: {
+            data,
+            valueInputOption,
+            includeValuesInResponse,
+            responseDateTimeRenderOption,
+            responseValueRenderOption,
+          },
         },
-      }, (err, res) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(res.data);
-      });
+        (err, res) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(res.data);
+        },
+      );
     });
   }
-  
+
   async moveFolder(id: string, folderId: string) {
     if (!this.isInitialized) {
       await this.init();
@@ -379,14 +427,18 @@ export class GoogleApiSpreadsheetEditorCustom {
     }
 
     const drive = google.drive({ version: 'v3', auth: this.oAuth2Client });
-    const result = await retryHandler(() => drive.files.copy({
-      fileId: id,
-      fields: '*',
-      requestBody: {
-        name,
-      },
-      supportsAllDrives: true
-    }), 3);
+    const result = await retryHandler(
+      () =>
+        drive.files.copy({
+          fileId: id,
+          fields: '*',
+          requestBody: {
+            name,
+          },
+          supportsAllDrives: true,
+        }),
+      3,
+    );
     return result.data.id;
   }
 

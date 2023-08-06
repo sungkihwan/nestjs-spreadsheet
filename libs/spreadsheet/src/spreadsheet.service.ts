@@ -1,191 +1,269 @@
-import { Inject, Injectable, PayloadTooLargeException, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  PayloadTooLargeException,
+  Logger,
+} from '@nestjs/common';
 
-import { GoogleApiSpreadsheetEditor, IFIle, ISpreadSheet } from '@libs/spreadsheet/google-api.spreadsheet.editor';
+import {
+  GoogleApiSpreadsheetEditor,
+  IFIle,
+  ISpreadSheet,
+} from '@libs/spreadsheet/google-api.spreadsheet.editor';
 import { GoogleApiSpreadsheetEditorMultiple } from '@libs/spreadsheet/google-api.spreadsheet.editor.multiple';
-import { GoogleApiSpreadsheetEditorCustom, IData } from '@libs/spreadsheet/google-api.spreadsheet.editor.custom';
-import {google} from "googleapis";
+import {
+  GoogleApiSpreadsheetEditorCustom,
+  IData,
+} from '@libs/spreadsheet/google-api.spreadsheet.editor.custom';
+import { google } from 'googleapis';
 
-export const UNLIMITED_SLOW_SHEET_EDITOR = Symbol('UNLIMITED_SLOW_SHEET_EDITOR');
+export const UNLIMITED_SLOW_SHEET_EDITOR = Symbol(
+  'UNLIMITED_SLOW_SHEET_EDITOR',
+);
 export const LIMITED_FAST_SHEET_EDITOR = Symbol('LIMITED_FAST_SHEET_EDITOR');
 export const MULTIPLE_SHEET_EDITOR = Symbol('MULTIPLE_SHEET_EDITOR');
 
 @Injectable()
 export class SpreadsheetService {
-
   private readonly logger = new Logger(SpreadsheetService.name);
 
   constructor(
-      @Inject(UNLIMITED_SLOW_SHEET_EDITOR)
-      private readonly slowEditor: GoogleApiSpreadsheetEditor,
-      @Inject(LIMITED_FAST_SHEET_EDITOR)
-      private readonly fastEditor: GoogleApiSpreadsheetEditor,
-      @Inject(MULTIPLE_SHEET_EDITOR)
-      private readonly multipleEditor: GoogleApiSpreadsheetEditorMultiple,
-  ) {
-  }
+    @Inject(UNLIMITED_SLOW_SHEET_EDITOR)
+    private readonly slowEditor: GoogleApiSpreadsheetEditor,
+    @Inject(LIMITED_FAST_SHEET_EDITOR)
+    private readonly fastEditor: GoogleApiSpreadsheetEditor,
+    @Inject(MULTIPLE_SHEET_EDITOR)
+    private readonly multipleEditor: GoogleApiSpreadsheetEditorMultiple,
+  ) {}
 
   async createSheet(title?: string): Promise<ISpreadSheet> {
-    return this.fastEditor.createSheet(title)
-        .catch(() => this.slowEditor.createSheet(title))
+    return this.fastEditor
+      .createSheet(title)
+      .catch(() => this.slowEditor.createSheet(title));
   }
 
   async getSheet(spreadsheetId: string): Promise<ISpreadSheet> {
-    return this.fastEditor.getSheet(spreadsheetId)
-        .catch(() => this.slowEditor.getSheet(spreadsheetId));
+    return this.fastEditor
+      .getSheet(spreadsheetId)
+      .catch(() => this.slowEditor.getSheet(spreadsheetId));
   }
 
   async copySheet(spreadsheetId: string, destId: string): Promise<string> {
-    return this.fastEditor.copySheet(spreadsheetId, destId)
-        .catch(() => this.slowEditor.copySheet(spreadsheetId, destId));
+    return this.fastEditor
+      .copySheet(spreadsheetId, destId)
+      .catch(() => this.slowEditor.copySheet(spreadsheetId, destId));
   }
 
-  async readSheet(spreadsheetId: string, range: string, renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' = 'FORMATTED_VALUE'): Promise<any[]> {
-    return this.fastEditor.readSheet(spreadsheetId, range, renderOption)
-        .catch(() => this.slowEditor.readSheet(spreadsheetId, range, renderOption));
+  async readSheet(
+    spreadsheetId: string,
+    range: string,
+    renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' = 'FORMATTED_VALUE',
+  ): Promise<any[]> {
+    return this.fastEditor
+      .readSheet(spreadsheetId, range, renderOption)
+      .catch(() =>
+        this.slowEditor.readSheet(spreadsheetId, range, renderOption),
+      );
   }
 
   async addPermission(
-      fileId: string,
-      emailAddress: string,
-      role: 'owner' | 'reader' | 'writer',
-      type: 'user' | 'group' | 'domain' | 'anyone' = 'user'
+    fileId: string,
+    emailAddress: string,
+    role: 'owner' | 'reader' | 'writer',
+    type: 'user' | 'group' | 'domain' | 'anyone' = 'user',
   ): Promise<void> {
-    return await this.fastEditor.addPermission(fileId, emailAddress, role, type);
+    return await this.fastEditor.addPermission(
+      fileId,
+      emailAddress,
+      role,
+      type,
+    );
   }
 
   async readSheetWithMultiAuth(
-      spreadsheetId: string,
-      range: string,
-      renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' = 'FORMATTED_VALUE'
+    spreadsheetId: string,
+    range: string,
+    renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' = 'FORMATTED_VALUE',
   ) {
-    return await this.executeWithRetry((editor) =>
-            editor.readSheet(spreadsheetId, range, renderOption),
-        spreadsheetId,
-        range,
+    return await this.executeWithRetry(
+      (editor) => editor.readSheet(spreadsheetId, range, renderOption),
+      spreadsheetId,
+      range,
     );
   }
 
   async readFolder(folderId: string): Promise<any> {
-    return this.fastEditor.readFolder(folderId)
-        .catch((e) => {
-          console.log(e);
-          return this.slowEditor.readFolder(folderId);
-        });
+    return this.fastEditor.readFolder(folderId).catch((e) => {
+      console.log(e);
+      return this.slowEditor.readFolder(folderId);
+    });
   }
 
-  async updateSheet(spreadsheetId: string, range: string, values: any, inputOptions: 'RAW' | 'USER_ENTERED' = 'RAW'): Promise<any> {
-    return this.fastEditor.updateSheet(spreadsheetId, range, values, inputOptions)
-        .catch(() => this.slowEditor.updateSheet(spreadsheetId, range, values, inputOptions));
+  async updateSheet(
+    spreadsheetId: string,
+    range: string,
+    values: any,
+    inputOptions: 'RAW' | 'USER_ENTERED' = 'RAW',
+  ): Promise<any> {
+    return this.fastEditor
+      .updateSheet(spreadsheetId, range, values, inputOptions)
+      .catch(() =>
+        this.slowEditor.updateSheet(spreadsheetId, range, values, inputOptions),
+      );
   }
 
   // 기존
-  async updateSheetByUserEntering(spreadsheetId: string, range: string, values: any): Promise<any> {
-    return this.fastEditor.updateSheet(spreadsheetId, range, values, 'USER_ENTERED')
-        .catch((e) => {
-          this.logger.log(`Fast spreadsheet api error!! ${e.message}`);
-          return this.slowEditor.updateSheet(spreadsheetId, range, values, 'USER_ENTERED')
-              .catch(e => {
-                this.logger.log(`Slow spreadsheet api error!! ${e.message}`);
-                throw new PayloadTooLargeException('Fast & Slow both errored!! ' + e.message);
-              })
-        });
+  async updateSheetByUserEntering(
+    spreadsheetId: string,
+    range: string,
+    values: any,
+  ): Promise<any> {
+    return this.fastEditor
+      .updateSheet(spreadsheetId, range, values, 'USER_ENTERED')
+      .catch((e) => {
+        this.logger.log(`Fast spreadsheet api error!! ${e.message}`);
+        return this.slowEditor
+          .updateSheet(spreadsheetId, range, values, 'USER_ENTERED')
+          .catch((e) => {
+            this.logger.log(`Slow spreadsheet api error!! ${e.message}`);
+            throw new PayloadTooLargeException(
+              'Fast & Slow both errored!! ' + e.message,
+            );
+          });
+      });
   }
 
   async updateSheetWithMultiAuth(
-      spreadsheetId: string,
-      range: string,
-      values: any,
-      inputOptions: 'RAW' | 'USER_ENTERED' = 'USER_ENTERED',
+    spreadsheetId: string,
+    range: string,
+    values: any,
+    inputOptions: 'RAW' | 'USER_ENTERED' = 'USER_ENTERED',
   ): Promise<any> {
-    this.logger.log(`스프레드 시트 업데이트를 시작합니다. spreadsheetId: ${spreadsheetId} range: ${range} values: ${values}`);
+    this.logger.log(
+      `스프레드 시트 업데이트를 시작합니다. spreadsheetId: ${spreadsheetId} range: ${range} values: ${values}`,
+    );
 
-    return await this.executeWithRetry((editor) =>
-            editor.updateSheet(spreadsheetId, range, values, inputOptions),
-        spreadsheetId,
-        range,
+    return await this.executeWithRetry(
+      (editor) =>
+        editor.updateSheet(spreadsheetId, range, values, inputOptions),
+      spreadsheetId,
+      range,
     );
   }
 
   // new -> multiple certs and bulk update 적용중
   async batchUpdateSheetByUserEntering(
-      spreadsheetId: string, data: IData[],
-      inputOptions: 'RAW' | 'USER_ENTERED' = 'RAW',
-      includeValuesInResponse = null, responseDateTimeRenderOption = null,
-      responseValueRenderOption = null,
-      maxRetries = 5
+    spreadsheetId: string,
+    data: IData[],
+    inputOptions: 'RAW' | 'USER_ENTERED' = 'RAW',
+    includeValuesInResponse = null,
+    responseDateTimeRenderOption = null,
+    responseValueRenderOption = null,
+    maxRetries = 5,
   ): Promise<any> {
-    this.logger.log(`스프레드 시트 배치 업데이트를 시작합니다. spreadsheetId: ${spreadsheetId}, maxRetries: ${maxRetries}`);
+    this.logger.log(
+      `스프레드 시트 배치 업데이트를 시작합니다. spreadsheetId: ${spreadsheetId}, maxRetries: ${maxRetries}`,
+    );
 
     for (let retries = 0; retries < maxRetries; retries++) {
       try {
-        const currentEditor: GoogleApiSpreadsheetEditorCustom = await this.multipleEditor.getNextEditor();
-        return await currentEditor.updateSheetBatch(spreadsheetId, data, inputOptions,
-            includeValuesInResponse, responseDateTimeRenderOption, responseValueRenderOption);
+        const currentEditor: GoogleApiSpreadsheetEditorCustom =
+          await this.multipleEditor.getNextEditor();
+        return await currentEditor.updateSheetBatch(
+          spreadsheetId,
+          data,
+          inputOptions,
+          includeValuesInResponse,
+          responseDateTimeRenderOption,
+          responseValueRenderOption,
+        );
       } catch (e) {
-        this.logger.warn(`spreadsheet api error!!, spreadsheetId: ${spreadsheetId}, error: ${e.message}`);
+        this.logger.warn(
+          `spreadsheet api error!!, spreadsheetId: ${spreadsheetId}, error: ${e.message}`,
+        );
         this.logger.log(`다음 에디터로 업데이트를 시작합니다.`);
       }
     }
 
-    throw new PayloadTooLargeException(`${maxRetries}번의 재시도를 하였으나 sheetId: ${spreadsheetId} 업데이트에 실패했습니다.`);
+    throw new PayloadTooLargeException(
+      `${maxRetries}번의 재시도를 하였으나 sheetId: ${spreadsheetId} 업데이트에 실패했습니다.`,
+    );
   }
 
-  async getValuesByMultiEditor(spreadsheetId: string, range: string, maxRetries = 5): Promise<any> {
-    this.logger.log(`스프레드 시트의 값들을 가져오는 작업을 시작합니다. spreadsheetId: ${spreadsheetId}, range: ${range}, maxRetries: ${maxRetries}`);
+  async getValuesByMultiEditor(
+    spreadsheetId: string,
+    range: string,
+    maxRetries = 5,
+  ): Promise<any> {
+    this.logger.log(
+      `스프레드 시트의 값들을 가져오는 작업을 시작합니다. spreadsheetId: ${spreadsheetId}, range: ${range}, maxRetries: ${maxRetries}`,
+    );
 
     for (let retries = 0; retries < maxRetries; retries++) {
       try {
-        const currentEditor: GoogleApiSpreadsheetEditorCustom = await this.multipleEditor.getNextEditor();
-        return await currentEditor.readSheet(spreadsheetId, range, 'FORMATTED_VALUE');
+        const currentEditor: GoogleApiSpreadsheetEditorCustom =
+          await this.multipleEditor.getNextEditor();
+        return await currentEditor.readSheet(
+          spreadsheetId,
+          range,
+          'FORMATTED_VALUE',
+        );
       } catch (e) {
-        this.logger.warn(`spreadsheet api error!!, spreadsheetId: ${spreadsheetId}, range: ${range}, error: ${e.message}`);
+        this.logger.warn(
+          `spreadsheet api error!!, spreadsheetId: ${spreadsheetId}, range: ${range}, error: ${e.message}`,
+        );
         this.logger.log(`다음 에디터로 값을 가져오는 작업을 시작합니다.`);
       }
     }
 
-    throw new PayloadTooLargeException(`${maxRetries}번의 재시도를 하였으나 spreadsheetId: ${spreadsheetId}, range: ${range} 값들을 가져오는 작업에 실패했습니다.`);
+    throw new PayloadTooLargeException(
+      `${maxRetries}번의 재시도를 하였으나 spreadsheetId: ${spreadsheetId}, range: ${range} 값들을 가져오는 작업에 실패했습니다.`,
+    );
   }
 
   async moveFolder(id: string, folderId: string) {
-    return this.slowEditor.moveFolder(id, folderId)
-        .catch(() => this.slowEditor.moveFolder(id, folderId));
+    return this.slowEditor
+      .moveFolder(id, folderId)
+      .catch(() => this.slowEditor.moveFolder(id, folderId));
   }
 
   async executeWithRetry(
-      func: (editor: GoogleApiSpreadsheetEditorCustom) => Promise<any>,
-      id?: string,
-      name?: string,
-      maxRetries = 5
+    func: (editor: GoogleApiSpreadsheetEditorCustom) => Promise<any>,
+    id?: string,
+    name?: string,
+    maxRetries = 5,
   ) {
     for (let retries = 0; retries < maxRetries; retries++) {
       try {
-        const currentEditor: GoogleApiSpreadsheetEditorCustom = await this.multipleEditor.getNextEditor();
+        const currentEditor: GoogleApiSpreadsheetEditorCustom =
+          await this.multipleEditor.getNextEditor();
         return await func(currentEditor);
       } catch (e) {
         if (retries == maxRetries - 1) {
           throw new PayloadTooLargeException(`${maxRetries}번의 재시도를 하였으나 id: ${id}, name: ${name} 작업에 실패했습니다. 
           error : ${e.message}`);
         }
-        this.logger.warn(`spreadsheet api error!!, id: ${id}, name: ${name}, error: ${e.message}`);
+        this.logger.warn(
+          `spreadsheet api error!!, id: ${id}, name: ${name}, error: ${e.message}`,
+        );
         this.logger.log(`다음 에디터로 업데이트를 시작합니다.`);
       }
     }
   }
 
   async deleteFile(fileId: string) {
-    return this.fastEditor.deleteFile(fileId)
-        .catch(() => {
-          console.log('t')
-          return this.slowEditor.deleteFile(fileId)
-        });
+    return this.fastEditor.deleteFile(fileId).catch(() => {
+      console.log('t');
+      return this.slowEditor.deleteFile(fileId);
+    });
   }
 
   async deleteFiles(fileIds: string[]) {
     await Promise.all(
-        fileIds.map((fileId: string) => {
-          return this.deleteFile(fileId)
-        })
-    )
+      fileIds.map((fileId: string) => {
+        return this.deleteFile(fileId);
+      }),
+    );
   }
 
   // async moveFolderByMultiEditor(id: string, folderId: string, maxRetries = 5) {
@@ -200,29 +278,36 @@ export class SpreadsheetService {
   // }
 
   async moveFolderByMultiEditor(id: string, folderId: string, maxRetries = 5) {
-    this.logger.log(`스프레드 시트 이동을 시작합니다. id: ${id}, folderId: ${folderId}, maxRetries: ${maxRetries}`);
+    this.logger.log(
+      `스프레드 시트 이동을 시작합니다. id: ${id}, folderId: ${folderId}, maxRetries: ${maxRetries}`,
+    );
 
     for (let retries = 0; retries < maxRetries; retries++) {
       try {
-        const currentEditor: GoogleApiSpreadsheetEditorCustom = await this.multipleEditor.getNextEditor();
-        return await currentEditor.moveFolder(id, folderId)
+        const currentEditor: GoogleApiSpreadsheetEditorCustom =
+          await this.multipleEditor.getNextEditor();
+        return await currentEditor.moveFolder(id, folderId);
       } catch (e) {
-        this.logger.warn(`spreadsheet api error!!, id: ${id}, folderId: ${folderId}, error: ${e.message}`);
+        this.logger.warn(
+          `spreadsheet api error!!, id: ${id}, folderId: ${folderId}, error: ${e.message}`,
+        );
         this.logger.log(`다음 에디터로 업데이트를 시작합니다.`);
       }
     }
 
-    throw new PayloadTooLargeException(`${maxRetries}번의 재시도를 하였으나 id: ${id}, folderId: ${folderId} 스프레드시트 이동에 실패했습니다.`);
+    throw new PayloadTooLargeException(
+      `${maxRetries}번의 재시도를 하였으나 id: ${id}, folderId: ${folderId} 스프레드시트 이동에 실패했습니다.`,
+    );
   }
 
   async getFile(id: string): Promise<IFIle> {
-    return this.fastEditor.getFile(id)
-        .catch(() => this.slowEditor.getFile(id));
+    return this.fastEditor.getFile(id).catch(() => this.slowEditor.getFile(id));
   }
 
   async copyFile(id: string, name: string): Promise<string> {
-    return this.slowEditor.copyFile(id, name)
-        .catch(() => this.slowEditor.copyFile(id, name));
+    return this.slowEditor
+      .copyFile(id, name)
+      .catch(() => this.slowEditor.copyFile(id, name));
   }
 
   // 권한문제로 사용 안함
@@ -242,8 +327,19 @@ export class SpreadsheetService {
   //   throw new PayloadTooLargeException(`${maxRetries}번의 재시도를 하였으나 id: ${id}, name: ${name} 스프레드시트 복사에 실패했습니다.`);
   // }
 
-  async copyOneSheet(spreadsheetId: string, destId: string, sheetId: number): Promise<any> {
-    return this.fastEditor.copyOneSheetToSpreadsheet({ spreadsheetId, destId, sheetId })
-        .catch(() => this.slowEditor.copyOneSheetToSpreadsheet({ spreadsheetId, destId, sheetId }));
+  async copyOneSheet(
+    spreadsheetId: string,
+    destId: string,
+    sheetId: number,
+  ): Promise<any> {
+    return this.fastEditor
+      .copyOneSheetToSpreadsheet({ spreadsheetId, destId, sheetId })
+      .catch(() =>
+        this.slowEditor.copyOneSheetToSpreadsheet({
+          spreadsheetId,
+          destId,
+          sheetId,
+        }),
+      );
   }
 }

@@ -1,5 +1,5 @@
 import { Mutex } from 'async-mutex';
-import { ApiGoogleServiceCertMultiple } from '@libs/google-cert/infra/api.google-cert.multiple';
+import { ApiGoogleServiceCertMultiple } from '@libs/spreadsheet/api.google-cert.multiple';
 import { GoogleApiSpreadsheetEditorCustom } from '@libs/spreadsheet/google-api.spreadsheet.editor.custom';
 
 export class GoogleApiSpreadsheetEditorMultiple {
@@ -22,7 +22,7 @@ export class GoogleApiSpreadsheetEditorMultiple {
   }
 
   async init(): Promise<void> {
-    const certs = await this.certMultipleModule.initMultiple()
+    const certs = await this.certMultipleModule.initMultiple();
     for (const cert of certs) {
       const editor = await GoogleApiSpreadsheetEditorCustom.create(cert, false);
       this.multipleEditors.push(editor);
