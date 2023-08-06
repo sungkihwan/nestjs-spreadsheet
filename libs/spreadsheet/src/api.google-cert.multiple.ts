@@ -3,9 +3,8 @@ import { GoogleAuth } from 'google-auth-library/build/src/auth/googleauth';
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { GoogleCert } from '../domain/google-cert';
 
-const spreadsheetDir = 'resource/spreadsheet';
+const spreadsheetDir = './keys';
 export const API_KEYS: string[] = [];
 
 fs.readdirSync(spreadsheetDir).forEach((file) => {

@@ -15,11 +15,7 @@ import {
   GoogleApiSpreadsheetEditorCustom,
   IData,
 } from '@libs/spreadsheet/google-api.spreadsheet.editor.custom';
-import { google } from 'googleapis';
 
-export const UNLIMITED_SLOW_SHEET_EDITOR = Symbol(
-  'UNLIMITED_SLOW_SHEET_EDITOR',
-);
 export const LIMITED_FAST_SHEET_EDITOR = Symbol('LIMITED_FAST_SHEET_EDITOR');
 export const MULTIPLE_SHEET_EDITOR = Symbol('MULTIPLE_SHEET_EDITOR');
 
@@ -28,8 +24,6 @@ export class SpreadsheetService {
   private readonly logger = new Logger(SpreadsheetService.name);
 
   constructor(
-    @Inject(UNLIMITED_SLOW_SHEET_EDITOR)
-    private readonly slowEditor: GoogleApiSpreadsheetEditor,
     @Inject(LIMITED_FAST_SHEET_EDITOR)
     private readonly fastEditor: GoogleApiSpreadsheetEditor,
     @Inject(MULTIPLE_SHEET_EDITOR)
@@ -37,21 +31,15 @@ export class SpreadsheetService {
   ) {}
 
   async createSheet(title?: string): Promise<ISpreadSheet> {
-    return this.fastEditor
-      .createSheet(title)
-      .catch(() => this.slowEditor.createSheet(title));
+    return this.fastEditor.createSheet(title);
   }
 
   async getSheet(spreadsheetId: string): Promise<ISpreadSheet> {
-    return this.fastEditor
-      .getSheet(spreadsheetId)
-      .catch(() => this.slowEditor.getSheet(spreadsheetId));
+    return this.fastEditor.getSheet(spreadsheetId);
   }
 
   async copySheet(spreadsheetId: string, destId: string): Promise<string> {
-    return this.fastEditor
-      .copySheet(spreadsheetId, destId)
-      .catch(() => this.slowEditor.copySheet(spreadsheetId, destId));
+    return this.fastEditor.copySheet(spreadsheetId, destId);
   }
 
   async readSheet(
@@ -59,11 +47,7 @@ export class SpreadsheetService {
     range: string,
     renderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' = 'FORMATTED_VALUE',
   ): Promise<any[]> {
-    return this.fastEditor
-      .readSheet(spreadsheetId, range, renderOption)
-      .catch(() =>
-        this.slowEditor.readSheet(spreadsheetId, range, renderOption),
-      );
+    return this.fastEditor.readSheet(spreadsheetId, range, renderOption);
   }
 
   async addPermission(
@@ -95,7 +79,6 @@ export class SpreadsheetService {
   async readFolder(folderId: string): Promise<any> {
     return this.fastEditor.readFolder(folderId).catch((e) => {
       console.log(e);
-      return this.slowEditor.readFolder(folderId);
     });
   }
 
@@ -105,11 +88,12 @@ export class SpreadsheetService {
     values: any,
     inputOptions: 'RAW' | 'USER_ENTERED' = 'RAW',
   ): Promise<any> {
-    return this.fastEditor
-      .updateSheet(spreadsheetId, range, values, inputOptions)
-      .catch(() =>
-        this.slowEditor.updateSheet(spreadsheetId, range, values, inputOptions),
-      );
+    return this.fastEditor.updateSheet(
+      spreadsheetId,
+      range,
+      values,
+      inputOptions,
+    );
   }
 
   // 기존
@@ -118,19 +102,12 @@ export class SpreadsheetService {
     range: string,
     values: any,
   ): Promise<any> {
-    return this.fastEditor
-      .updateSheet(spreadsheetId, range, values, 'USER_ENTERED')
-      .catch((e) => {
-        this.logger.log(`Fast spreadsheet api error!! ${e.message}`);
-        return this.slowEditor
-          .updateSheet(spreadsheetId, range, values, 'USER_ENTERED')
-          .catch((e) => {
-            this.logger.log(`Slow spreadsheet api error!! ${e.message}`);
-            throw new PayloadTooLargeException(
-              'Fast & Slow both errored!! ' + e.message,
-            );
-          });
-      });
+    return this.fastEditor.updateSheet(
+      spreadsheetId,
+      range,
+      values,
+      'USER_ENTERED',
+    );
   }
 
   async updateSheetWithMultiAuth(
@@ -221,12 +198,6 @@ export class SpreadsheetService {
     );
   }
 
-  async moveFolder(id: string, folderId: string) {
-    return this.slowEditor
-      .moveFolder(id, folderId)
-      .catch(() => this.slowEditor.moveFolder(id, folderId));
-  }
-
   async executeWithRetry(
     func: (editor: GoogleApiSpreadsheetEditorCustom) => Promise<any>,
     id?: string,
@@ -252,10 +223,7 @@ export class SpreadsheetService {
   }
 
   async deleteFile(fileId: string) {
-    return this.fastEditor.deleteFile(fileId).catch(() => {
-      console.log('t');
-      return this.slowEditor.deleteFile(fileId);
-    });
+    return this.fastEditor.deleteFile(fileId);
   }
 
   async deleteFiles(fileIds: string[]) {
@@ -301,13 +269,7 @@ export class SpreadsheetService {
   }
 
   async getFile(id: string): Promise<IFIle> {
-    return this.fastEditor.getFile(id).catch(() => this.slowEditor.getFile(id));
-  }
-
-  async copyFile(id: string, name: string): Promise<string> {
-    return this.slowEditor
-      .copyFile(id, name)
-      .catch(() => this.slowEditor.copyFile(id, name));
+    return this.fastEditor.getFile(id);
   }
 
   // 권한문제로 사용 안함
@@ -332,14 +294,10 @@ export class SpreadsheetService {
     destId: string,
     sheetId: number,
   ): Promise<any> {
-    return this.fastEditor
-      .copyOneSheetToSpreadsheet({ spreadsheetId, destId, sheetId })
-      .catch(() =>
-        this.slowEditor.copyOneSheetToSpreadsheet({
-          spreadsheetId,
-          destId,
-          sheetId,
-        }),
-      );
+    return this.fastEditor.copyOneSheetToSpreadsheet({
+      spreadsheetId,
+      destId,
+      sheetId,
+    });
   }
 }

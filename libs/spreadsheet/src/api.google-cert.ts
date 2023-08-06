@@ -14,7 +14,7 @@ export class ApiGoogleServiceCert implements Partial<GoogleCert> {
   async init(): Promise<GoogleAuth> {
     this.isInitialize = true;
     return new google.auth.GoogleAuth({
-      keyFile: 'resource/companylabs-1615274998871-ada5e1b1c539.json',
+      keyFile: 'keys/probable-splice-395107-cb8bfb032a89.json',
       scopes: SCOPES,
     });
   }
